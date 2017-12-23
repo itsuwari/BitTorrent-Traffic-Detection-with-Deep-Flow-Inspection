@@ -1,172 +1,60 @@
-#include "util.h" 
-#include <stdlib.h> 
-#include "pcap.h" 
-#include <stdio.h> 
-#include <string.h> 
-#include <stdlib.h> 
-#include <ctype.h> 
-#include <errno.h> 
-#include <sys/types.h> 
-#include <sys/socket.h> 
-#include <netinet/in.h> 
-#include <arpa/inet.h> 
-#include <assert.h> 
-#include <math.h> 
-/* Global variables */ 
-flow*  nptr; 
-btip* ipptr; 
-static int ipcount = 0; 
-static int count = 0; 
-static int pcount
- = 0;                   
-/* packet counter */ 
-const
-u_char
- *
-payload
- = 0;                    
-/* Packet payload */ 
-float
-C
-[400][10]; 
-int
-CCLASS
-[400]; 
-int
-NUMC
-=0; 
-double
-startcputime
-; 
-char
- *
-argv1
-; 
-void
-got_packet
-(
-u_char
- *
-args
-, 
-const
-struct
-pcap_pkthdr
- *
-header
-, 
-const
-u_char
- *
-packet
-); 
-void
-reportData
-() ; 
-void
-readData
-(
-FILE
+f
+low
 * 
-fp
-) 
-{ 
-int
-i
-=0; 
-while
-(fscanf(fp, 
-"%f %f %f %f %f %f %f %f %f %f %d\n"
-, 
-               &C[i][0], &C[i][1], &C[i][2], &C[i][3], &C[i][4], 
-               &C[i][5], &C[i][6], &C[i][7], &C[i][8], &C[i][9], 
-               &CCLASS[i])!=EOF) 
-    { 
-      i++; 
-      assert(i<400); 
-    } 
-  NUMC = i-1; 
-} 
-int
-main
+r
+ = bsearch(&n, nptr, count, 
+sizeo
+f
 (
+f
+low), (
 int
-argc
-, 
-char
- **
-argv
-) 
-{ 
-pcap_t
- *
-fp
-; 
-FILE
- *
-fp1
-; 
-  startcputime=sysGetCpuTime(); 
-char
-errbuf
-[PCAP_ERRBUF_SIZE]; 
+(*)(
+const
+void
+*, 
+const
+void
+*))
+f
+lowCmp);
 if
-(argc != 3) { 
-    printf(
-"usage: %s pcap_filename cluster_center_data_base"
-, argv[0]); 
-return
- -1; 
-  } 
-/* Open the capture file */ 
+ (r) { 
+    r->numTPkt++; 
+    r->infoptr[r->infonum].avgSize = ((r->infoptr[r->infonum].avgSize * r->infoptr[r-
+>infonum].numPkt) + ntohs(ip->ip_len))/(r->infoptr[r->infonum].numPkt+1); 
+    r->infoptr[r->infonum].numPkt++; 
+    r->infoptr[r->infonum].totalHeaderSize += size_ip + size_tcp; 
+    r->infoptr[r->infonum].totalSize += ntohs(ip->ip_len); 
+    r->infoptr[r->infonum].numSendPkt++; 
+    r->infoptr[r->infonum].totalSendSize+=ntohs(ip->ip_len); 
+    r->infoptr[r->infonum].totalSendHeaderSize+= size_ip + size_tcp; 
+    dp[0]=r->infoptr[r->infonum].numPkt; 
+    dp[1]=r->infoptr[r->infonum].avgSize; 
+    dp[2]=r->infoptr[r->infonum].totalHeaderSize; 
+    dp[3]=r->infoptr[r->infonum].totalSize; 
+    dp[4]=r->infoptr[r->infonum].numSendPkt; 
+    dp[5]=r->infoptr[r->infonum].totalSendHeaderSize; 
+    dp[6]=r->infoptr[r->infonum].totalSendSize; 
+    dp[7]=r->infoptr[r->infonum].numReceivePkt; 
+    dp[8]=r->infoptr[r->infonum].totalReceiveHeaderSize; 
+    dp[9]=r->infoptr[r->infonum].totalReceiveSize; 
+    r->infoptr[r->infonum].bt_dfi = dfi_class(dp); 
+    addIp(r->ipAddr1, r->infoptr[r->infonum].bt_dfi, r->infoptr[r->infonum].bt_dpi_packet); 
+    addIp(r->ipAddr2, r->infoptr[r->infonum].bt_dfi, r->infoptr[r->infonum].bt_dpi_packet); 
 if
- ((fp = pcap_open_offline(argv[1], errbuf)) == 
-NULL
-) { 
-    fprintf(stderr,
-"\nUnable to open the file %s.\n"
-, argv[1]); 
-return
- -1; 
+ ((tcp->th_flags & TH_FIN) == TH_FIN) {   
+// a flow ends 
+      r->infonum++; 
+    } 
   } 
-  argv1=argv[1]; 
-/* Open the center database */ 
-if
- ((fp1 = fopen(argv[2], 
-"r"
-)) == 
-NULL
-) { 
-    fprintf(stderr,
-"\nUnable to open the file %s.\n"
-, argv[2]); 
-return
- -1; 
-  } 
-  readData(fp1); 
-/* allocate space for pkt stat */ 
-  nptr = (
-flow
-*)malloc(MAXPACKETS*
-sizeof
-(flow)); 
-  bzero(nptr, MAXPACKETS*
-sizeof
-(flow)); 
-/* allocate space for btip stat */ 
-  ipptr = (
-btip
-*)malloc(2*MAXPACKETS*
-sizeof
-(btip)); 
-bzero(ipptr, MAXPACKETS*
-sizeof
-(btip)); 
-/* read and dispatch packets until EOF is reached */ 
-  pcap_loop(fp, 0, got_packet, 
-NULL
-); 
-  qsort(nptr, count, 
+else
+ { 
+    strcpy(n.ipAddr1, inet_ntoa(ip->ip_dst)); 
+    strcpy(n.ipAddr2, inet_ntoa(ip->ip_src)); 
+    n.port1=ntohs(tcp->th_dport); 
+    n.port2=ntohs(tcp->th_sport); 
+    r = bsearch(&n, nptr, count, 
 sizeof
 (flow), (
 int
@@ -176,9 +64,45 @@ void
 *, 
 const
 void
-*))flowCmpNumPkt); 
-  reportData(); 
-  pcap_close(fp); 
+*))flowCmp); 
+if
+ (r) { 
+      r->numTPkt++; 
+      r->infoptr[r->infonum].avgSize = ((r->infoptr[r->infonum].avgSize * r->infoptr[r-
+>infonum].numPkt) + ntohs(ip->ip_len))/(r->infoptr[r->infonum].numPkt+1); 
+      r->infoptr[r->infonum].numPkt++; 
+      r->infoptr[r->infonum].totalHeaderSize += size_ip + size_tcp; 
+      r->infoptr[r->infonum].totalSize += ntohs(ip->ip_len); 
+      r->infoptr[r->infonum].numReceivePkt++; 
+      r->infoptr[r->infonum].totalReceiveSize+=ntohs(ip->ip_len); 
+      r->infoptr[r->infonum].totalReceiveHeaderSize+= size_ip + size_tcp; 
+      dp[0]=r->infoptr[r->infonum].numPkt; 
+      dp[1]=r->infoptr[r->infonum].avgSize; 
+      dp[2]=r->infoptr[r->infonum].totalHeaderSize; 
+      dp[3]=r->infoptr[r->infonum].totalSize; 
+      dp[4]=r->infoptr[r->infonum].numSendPkt; 
+      dp[5]=r->infoptr[r->infonum].totalSendHeaderSize; 
+      dp[6]=r->infoptr[r->infonum].totalSendSize; 
+      dp[7]=r->infoptr[r->infonum].numReceivePkt; 
+      dp[8]=r->infoptr[r->infonum].totalReceiveHeaderSize; 
+      dp[9]=r->infoptr[r->infonum].totalReceiveSize; 
+      r->infoptr[r->infonum].bt_dfi = dfi_class(dp); 
+      addIp(r->ipAddr1, r->infoptr[r->infonum].bt_dfi, r->infoptr[r->infonum].bt_dpi_packet); 
+      addIp(r->ipAddr2, r->infoptr[r->infonum].bt_dfi, r->infoptr[r->infonum].bt_dpi_packet); 
+if
+ ((tcp->th_flags & TH_FIN) == TH_FIN) { 
+// a flow ends 
+        r->infonum++; 
+      } 
+    } 
+else
+ {  
+// a new flow 
+      addFlow(count, ip->ip_src ,tcp->th_sport ,ip->ip_dst, tcp->th_dport, size_ip + size_tcp, 
+ntohs(ip->ip_len), 1); 
+      count++; 
+    } 
+  } 
 return
- 0; 
+; 
 } 
